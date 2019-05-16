@@ -12,6 +12,9 @@
     <OutputPath>.</OutputPath>
     <Name>mega_racer</Name>
     <RootNamespace>mega_racer</RootNamespace>
+    <IsWindowsApplication>False</IsWindowsApplication>
+    <InterpreterId>{e38316d7-620e-4a15-a441-ed751a2be821}</InterpreterId>
+    <InterpreterVersion>3.5</InterpreterVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -27,6 +30,9 @@
     <Compile Include="ObjModel.py" />
     <Compile Include="racer.py" />
     <Compile Include="terrain.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <InterpreterReference Include="{e38316d7-620e-4a15-a441-ed751a2be821}\3.5" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>

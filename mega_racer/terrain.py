@@ -40,7 +40,7 @@ class Terrain:
     # Same for rocks
     rockLocations = []
 
-    # Texture unit allocaitons:
+    # Texture unit allocations:
     TU_Grass = 0
 
     def render(self, view, renderingSystem):
@@ -88,7 +88,7 @@ class Terrain:
 
                     xyPos = vec2(i, j) * self.xyScale + xyOffset;
                     # TODO 1.1: set the height
-                    zPos = 0.0
+                    zPos = self.heightScale*red
                     pt = vec3(xyPos[0], xyPos[1], zPos)
                     terrainVerts.append(pt)
 
