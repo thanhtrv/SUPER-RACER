@@ -112,7 +112,15 @@ class RenderingSystem:
     vec3 computeShading(vec3 materialColour, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, vec3 lightColour)
     {
         // TODO 1.5: Here's where code to compute shading would be placed most conveniently
-        return materialColour;
+        
+        viewSpaceNormal = normalize(viewSpaceNormal);
+        vec3 viewSpaceDirectionToLight = normalize(viewSpaceLightPos - viewSpacePosition);
+        float incomingIntensity = max(0.0, dot(viewSpaceNormal, viewSpaceDirectionToLight));
+        vec3 incomingLight = incomingIntensity * lightColour;
+        
+        // fragmentColor = vec4(vec3(incomingIntensity), material_alpha);
+        
+        return (incomingLight + globalAmbientLight) * materialColour;
     }
     """
     objModelShader = None
@@ -288,6 +296,7 @@ def update(dt, keyStateMap, mouseDelta):
 
     viewHeight = g_followCamOffset / math.sqrt(2)
     viewDistanceXYPlaneVec = viewHeight * normalize(g_racer.heading)
+
     g_viewPosition = [g_racer.position[0] - viewDistanceXYPlaneVec[0], g_racer.position[1] - viewDistanceXYPlaneVec[1], viewHeight + g_racer.position[2]]
     g_viewTarget = [g_racer.position[0], g_racer.position[1], g_racer.position[2] + g_followCamLookOffset]
     print(g_racer.position)
