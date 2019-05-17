@@ -285,6 +285,12 @@ def update(dt, keyStateMap, mouseDelta):
 
     g_racer.update(dt, keyStateMap)
 
+
+    viewHeight = g_followCamOffset / math.sqrt(2)
+    viewDistanceXYPlaneVec = viewHeight * normalize(g_racer.heading)
+    g_viewPosition = [g_racer.position[0] - viewDistanceXYPlaneVec[0], g_racer.position[1] - viewDistanceXYPlaneVec[1], viewHeight + g_racer.position[2]]
+    g_viewTarget = [g_racer.position[0], g_racer.position[1], g_racer.position[2] + g_followCamLookOffset]
+    print(g_racer.position)
     # TODO 1.2: Make the camera look at the racer. Code for updating the camera should be done after the 
     # racer, otherwise the offset will lag and it generally looks weird.
 

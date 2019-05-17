@@ -29,6 +29,8 @@ class Terrain:
     imageHeight = 0
     shader = None
     renderWireFrame = False
+    terrainTexId = None #grass
+        
 
     # Lists of locations generated from the map texture green channel (see the 'load' method)
     # you can add any other meaning of other values as you see fit.
@@ -55,6 +57,8 @@ class Terrain:
         lu.setUniform(self.shader, "xyOffset", xyOffset);
 
         #TODO 1.4: Bind the grass texture to the right texture unit, hint: lu.bindTexture
+        lu.bindTexture(self.TU_Grass, self.terrainTexId)
+
 
         if self.renderWireFrame:
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -88,7 +92,7 @@ class Terrain:
 
                     xyPos = vec2(i, j) * self.xyScale + xyOffset;
                     # TODO 1.1: set the height
-                    zPos = self.heightScale*red
+                    zPos = self.heightScale * red
                     pt = vec3(xyPos[0], xyPos[1], zPos)
                     terrainVerts.append(pt)
 
@@ -221,15 +225,24 @@ class Terrain:
 
             uniform float terrainHeightScale;
             uniform float terrainTextureXyScale;
-
+            uniform sampler2D grassTextId;
             out vec4 fragmentColor;
 
             void main() 
             {
                 vec3 materialColour = vec3(v2f_height/terrainHeightScale);
                 // TODO 1.4: Compute the texture coordinates and sample the texture for the grass and use as material colour.
+                // vec3 materialDiffuse;
+                // vec3 materialSpecular;
+                
+                // sampler2D test;
+                vec2 testvecw = v2f_worldSpacePosition.xy;
+                vec3 grassColour = texture(grassTextId, testvecw*terrainTextureXyScale).xyz;
+                //vec3 materialColour = grassColour;
+                
+                
 
-                vec3 reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
+                vec3 reflectedLight = computeShading(grassColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
 	            fragmentColor = vec4(toSrgb(reflectedLight), 1.0);
 	            //fragmentColor = vec4(toSrgb(vec3(v2f_height/terrainHeightScale)), 1.0);
 
@@ -242,6 +255,9 @@ class Terrain:
         self.shader = lu.buildShader([vertexShader], ["#version 330\n", renderingSystem.commonFragmentShaderCode, fragmentShader], {"positionIn" : 0, "normalIn" : 1})
         
         # TODO 1.4: Load texture and configure the sampler
+        self.terrainTexId = ObjModel.loadTexture("data/grass2.png","", True)
+        
+        
 
     # Called by the game to drawt he UI widgets for the terrain.
     def drawUi(self):
