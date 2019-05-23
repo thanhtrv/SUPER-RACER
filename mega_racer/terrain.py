@@ -30,6 +30,11 @@ class Terrain:
     shader = None
     renderWireFrame = False
     terrainTexId = None #grass
+    highTexId = None #high texture
+    roadTexId = None
+    steepTexId = None
+    terrainDataSampleTexId = None
+
         
 
     # Lists of locations generated from the map texture green channel (see the 'load' method)
@@ -44,6 +49,10 @@ class Terrain:
 
     # Texture unit allocations:
     TU_Grass = 0
+    TU_high = 1
+    TU_road = 2
+    TU_steep = 3
+    TU_map = 4
 
     def render(self, view, renderingSystem):
         glUseProgram(self.shader)
@@ -58,6 +67,18 @@ class Terrain:
 
         #TODO 1.4: Bind the grass texture to the right texture unit, hint: lu.bindTexture
         lu.bindTexture(self.TU_Grass, self.terrainTexId)
+        lu.bindTexture(self.TU_high, self.highTexId)
+        lu.bindTexture(self.TU_road, self.roadTexId)
+        lu.bindTexture(self.TU_steep, self.steepTexId)
+
+        lu.bindTexture(self.TU_map, self.terrainDataSampleTexId)
+
+
+        #set uniform
+        lu.setUniform(self.shader, "highTexture", self.TU_high)
+        lu.setUniform(self.shader, "roadTexture", self.TU_road)
+        lu.setUniform(self.shader, "steepTexture", self.TU_steep)
+        lu.setUniform(self.shader, "terrainDataSample", self.TU_map)
 
 
         if self.renderWireFrame:
@@ -194,6 +215,14 @@ class Terrain:
                 vec3 v2f_viewSpacePosition;
                 vec3 v2f_viewSpaceNormal;
                 vec3 v2f_worldSpacePosition;
+                
+                //vec2 normalizedXYcoords;
+                vec2 v2f_xyNormScale;
+                vec2 v2f_xyOffset;
+                
+                vec3 v2f_normalIn;
+
+
             };
 
             void main() 
@@ -203,6 +232,13 @@ class Terrain:
                 v2f_worldSpacePosition = positionIn;
                 v2f_viewSpacePosition = (modelToViewTransform * vec4(positionIn, 1.0)).xyz;
                 v2f_viewSpaceNormal = modelToViewNormalTransform * normalIn;
+
+                v2f_xyNormScale = xyNormScale;
+                v2f_xyOffset = xyOffset;
+                
+                v2f_normalIn = normalIn;
+                
+                //normalizedXYcoords = positionIn.xy * xyNormScale + xyOffset;
 
 	            // gl_Position is a buit-in 'out'-variable that gets passed on to the clipping and rasterization stages (hardware fixed function).
                 // it must be written by the vertex shader in order to produce any drawn geometry. 
@@ -221,28 +257,80 @@ class Terrain:
                 vec3 v2f_viewSpacePosition;
                 vec3 v2f_viewSpaceNormal;
                 vec3 v2f_worldSpacePosition;
+                
+                //vec2 normalizedXYcoords;
+                
+                vec2 v2f_xyNormScale;
+                vec2 v2f_xyOffset;   
+                
+                vec3 v2f_normalIn;
+
+
             };
 
             uniform float terrainHeightScale;
             uniform float terrainTextureXyScale;
             uniform sampler2D grassTextId;
+            uniform sampler2D roadTexture;
+            uniform sampler2D highTexture;
+            uniform sampler2D steepTexture;
+            uniform sampler2D terrainDataSample;
+
             out vec4 fragmentColor;
 
             void main() 
             {
-                vec3 materialColour = vec3(v2f_height/terrainHeightScale);
+                //vec3 materialColour = vec3(v2f_height/terrainHeightScale);
                 // TODO 1.4: Compute the texture coordinates and sample the texture for the grass and use as material colour.
-                // vec3 materialDiffuse;
+                //vec3 materialDiffuse;
                 // vec3 materialSpecular;
+                
+                vec3 materialColour;
+                // Tracking all the map to find "blue".
+                
+                // Now check viewspace normal to see if the textvure should be steep instead
+                float steepness = dot(v2f_normalIn, vec3(v2f_normalIn.x, 0.0, v2f_normalIn.z));
+                
+                float steepThreshold = 0.6; 
+
+                
+                vec2 normalized_text_coord = vec2(v2f_worldSpacePosition.x * v2f_xyNormScale.x, v2f_worldSpacePosition.y * v2f_xyNormScale.y);
+                
+                normalized_text_coord = (normalized_text_coord -v2f_xyOffset * v2f_xyNormScale);
+                
+                float blue_channel = texture(terrainDataSample, normalized_text_coord).z;
+
                 
                 // sampler2D test;
                 vec2 testvecw = v2f_worldSpacePosition.xy;
                 vec3 grassColour = texture(grassTextId, testvecw*terrainTextureXyScale).xyz;
-                //vec3 materialColour = grassColour;
-                
-                
 
-                vec3 reflectedLight = computeShading(grassColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
+                //if ((v2f_height/terrainHeightScale) < 0.29){
+                if (blue_channel >= 0.9){
+                
+                    vec3 road2Colour = texture(roadTexture, testvecw*terrainTextureXyScale).xyz;
+                    materialColour = mix(materialColour,road2Colour,(v2f_height/terrainHeightScale));
+                    //materialColour = rock2Colour;
+                } else if (steepness < steepThreshold){
+                
+                    vec3 steep2Colour = texture(steepTexture, testvecw*terrainTextureXyScale).xyz;
+                    materialColour = mix(materialColour,steep2Colour,(v2f_height/terrainHeightScale));
+
+                } else if ((v2f_height/terrainHeightScale) > 0.9){
+                
+                    vec3 rock2Colour = texture(highTexture, testvecw*terrainTextureXyScale).xyz;
+                    materialColour = mix(materialColour,rock2Colour,(v2f_height/terrainHeightScale));
+                    
+                }
+                else {
+                    materialColour = grassColour ;
+
+                }
+                
+                //materialDiffuse = texture(highTexture, vec2(v2f_worldSpacePosition.xy) * terrainTextureXyScale).xyz;
+
+
+                vec3 reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
 	            fragmentColor = vec4(toSrgb(reflectedLight), 1.0);
 	            //fragmentColor = vec4(toSrgb(vec3(v2f_height/terrainHeightScale)), 1.0);
 
@@ -256,7 +344,12 @@ class Terrain:
         
         # TODO 1.4: Load texture and configure the sampler
         self.terrainTexId = ObjModel.loadTexture("data/grass2.png","", True)
-        
+        self.highTexId = ObjModel.loadTexture("data/rock_2.png", "", True)
+        self.roadTexId = ObjModel.loadTexture("data/paving_5.png", "", True)
+        self.steepTexId = ObjModel.loadTexture("data/rock_5.png", "", True)
+
+        self.terrainDataSampleTexId = ObjModel.loadTexture("data/track_01_128.png","", False)
+
         
 
     # Called by the game to drawt he UI widgets for the terrain.
