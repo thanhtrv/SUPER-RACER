@@ -53,6 +53,7 @@ g_sunAngle = 0.0
 
 g_terrain = None
 g_racer = None
+g_tree = None
 
 
 g_headlight_position = [0.0,0.0,0.0];
@@ -132,14 +133,18 @@ class RenderingSystem:
     }
 
 
-    vec3 computeShading(vec3 materialColour, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, vec3 lightColour, vec3 head_direction, vec3 head_position, vec3 head_colour)
+    vec3 computeShading(vec3 materialColour, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, vec3 lightColour)
     {
+    
+    
+        
         // TODO 1.5: Here's where code to compute shading would be placed most conveniently
         
         viewSpaceNormal = normalize(viewSpaceNormal);
         vec3 viewSpaceDirectionToLight = normalize(viewSpaceLightPos - viewSpacePosition);
         float incomingIntensity = max(0.0, dot(viewSpaceNormal, viewSpaceDirectionToLight));
         vec3 incomingLight = incomingIntensity * lightColour;
+        
         
         
         
@@ -263,7 +268,7 @@ class RenderingSystem:
 
                     vec3 reflectedLight = computeShading(materialDiffuse, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour) + material_emissive_color;
 
-	                fragmentColor = vec4(toSrgb(reflectedLight), material_alpha, g_headlight_direction, g_headlight_position, g_headlight_colour);
+	                fragmentColor = vec4(toSrgb(reflectedLight), material_alpha);
                 }
             """], ObjModel.getDefaultAttributeBindings())
         glUseProgram(self.objModelShader)
@@ -327,7 +332,7 @@ def update(dt, keyStateMap, mouseDelta):
     g_racer.update(dt, keyStateMap)
 
 
-    # seting the camera
+    # # seting the camera
     viewHeight = g_followCamOffset / math.sqrt(2)
     viewDistanceXYPlaneVec = viewHeight * normalize(g_racer.heading)
 
@@ -337,9 +342,9 @@ def update(dt, keyStateMap, mouseDelta):
     # TODO 1.2: Make the camera look at the racer. Code for updating the camera should be done after the 
     # racer, otherwise the offset will lag and it generally looks weird.
 
-    g_headlight_position = g_racer.position;
-    g_headlight_direction = [g_racer.heading.x,g_racer.heading.y,g_racer.heading.z - 0.33];
-    g_headlight_color = [1,0,0];
+    # g_headlight_position = g_racer.position;
+    # g_headlight_direction = [g_racer.heading.x,g_racer.heading.y,g_racer.heading.z - 0.33];
+    # g_headlight_color = [1,0,0];
 
     if imgui.tree_node("Camera", imgui.TREE_NODE_DEFAULT_OPEN):
         _,g_followCamOffset = imgui.slider_float("FollowCamOffset ", g_followCamOffset, 2.0, 100.0)
@@ -391,6 +396,8 @@ def renderFrame(width, height):
     # call tree
     # g_tree.render(view, g_renderingSystem)
     # g_tree.render(view, g_renderingSystem)
+    g_tree.render(view, g_renderingSystem)
+
 
 
 
@@ -572,6 +579,8 @@ g_racer.load("data/racer_02.obj", g_terrain, g_renderingSystem);
 
 g_tree = Prop()
 g_tree.load("data/trees/birch_01_d.obj", g_terrain, g_renderingSystem);
+
+
 
 currentTime = glfw.get_time()
 prevMouseX,prevMouseY = glfw.get_cursor_pos(window)

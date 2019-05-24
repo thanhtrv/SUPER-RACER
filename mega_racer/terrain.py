@@ -353,6 +353,8 @@ class Terrain:
                 }
                 
                 //materialDiffuse = texture(highTexture, vec2(v2f_worldSpacePosition.xy) * terrainTextureXyScale).xyz;
+                
+                
 
                 //2.2
                 vec3 reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
