@@ -23,6 +23,8 @@ from lab_utils import vec3, vec2
 from terrain import Terrain
 from racer import Racer
 
+from Prop import Prop
+
 #
 # global variable declarations
 #
@@ -51,6 +53,11 @@ g_sunAngle = 0.0
 
 g_terrain = None
 g_racer = None
+
+
+g_headlight_position = [0.0,0.0,0.0];
+g_headlight_color = [0.0,0.0,0.0];
+g_headlight_direction = [0.0,0.0,0.0];
 
 #
 # Key-frames for the sun light and ambient, picked by hand-waving to look ok. Note how most of this is nonsense from a physical point of view and 
@@ -94,6 +101,11 @@ class RenderingSystem:
     # for example code to transform the colour output to srgb. It is also a nice place to put code to compute lighting 
     # and other effects that should be the same accross the terrain and racer for example.
     commonFragmentShaderCode = """
+    
+    //global
+    
+
+    
 
     uniform mat4 worldToViewTransform;
     uniform mat4 viewSpaceToSmTextureSpace;
@@ -107,9 +119,20 @@ class RenderingSystem:
     {
       return pow(color, vec3(1.0 / 2.2));
     }
+    
+    //2.2
+     vec3 applyFog(vec3 shading, float distance, vec3 rayOri, vec3 rayDir)
+    {
+        //using fogColour as average of ambient and sun?
+        float b = 0.001;
+        float c = 0.66;
+        float fogAmount = c * exp(-rayOri.y*b) * (1.0-exp( -distance*rayDir.y*b ))/rayDir.y;
+        vec3  fogColor  = max(sunLightColour, globalAmbientLight*2.0);
+        return mix( shading, fogColor, fogAmount );
+    }
 
 
-    vec3 computeShading(vec3 materialColour, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, vec3 lightColour)
+    vec3 computeShading(vec3 materialColour, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, vec3 lightColour, vec3 head_direction, vec3 head_position, vec3 head_colour)
     {
         // TODO 1.5: Here's where code to compute shading would be placed most conveniently
         
@@ -118,10 +141,15 @@ class RenderingSystem:
         float incomingIntensity = max(0.0, dot(viewSpaceNormal, viewSpaceDirectionToLight));
         vec3 incomingLight = incomingIntensity * lightColour;
         
+        
+        
+        
         // fragmentColor = vec4(vec3(incomingIntensity), material_alpha);
         
         return (incomingLight + globalAmbientLight) * materialColour;
     }
+    
+    
     """
     objModelShader = None
     # Helper to set common uniforms, such as those used for global lights that should be implemetned the same way in all shaders.
@@ -217,6 +245,11 @@ class RenderingSystem:
                 uniform sampler2D normal_texture;
 
                 out vec4 fragmentColor;
+                
+                vec3 g_headlight_position;
+                vec3 g_headlight_direction;
+                vec3 g_headlight_colour;
+                
 
                 void main() 
                 {
@@ -230,7 +263,7 @@ class RenderingSystem:
 
                     vec3 reflectedLight = computeShading(materialDiffuse, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour) + material_emissive_color;
 
-	                fragmentColor = vec4(toSrgb(reflectedLight), material_alpha);
+	                fragmentColor = vec4(toSrgb(reflectedLight), material_alpha, g_headlight_direction, g_headlight_position, g_headlight_colour);
                 }
             """], ObjModel.getDefaultAttributeBindings())
         glUseProgram(self.objModelShader)
@@ -294,6 +327,7 @@ def update(dt, keyStateMap, mouseDelta):
     g_racer.update(dt, keyStateMap)
 
 
+    # seting the camera
     viewHeight = g_followCamOffset / math.sqrt(2)
     viewDistanceXYPlaneVec = viewHeight * normalize(g_racer.heading)
 
@@ -302,6 +336,10 @@ def update(dt, keyStateMap, mouseDelta):
     print(g_racer.position)
     # TODO 1.2: Make the camera look at the racer. Code for updating the camera should be done after the 
     # racer, otherwise the offset will lag and it generally looks weird.
+
+    g_headlight_position = g_racer.position;
+    g_headlight_direction = [g_racer.heading.x,g_racer.heading.y,g_racer.heading.z - 0.33];
+    g_headlight_color = [1,0,0];
 
     if imgui.tree_node("Camera", imgui.TREE_NODE_DEFAULT_OPEN):
         _,g_followCamOffset = imgui.slider_float("FollowCamOffset ", g_followCamOffset, 2.0, 100.0)
@@ -350,6 +388,9 @@ def renderFrame(width, height):
     g_terrain.render(view, g_renderingSystem)
     g_racer.render(view, g_renderingSystem)
 
+    # call tree
+    # g_tree.render(view, g_renderingSystem)
+    # g_tree.render(view, g_renderingSystem)
 
 
 
@@ -528,6 +569,9 @@ g_terrain.load("data/track_01_128.png", g_renderingSystem);
 
 g_racer = Racer()
 g_racer.load("data/racer_02.obj", g_terrain, g_renderingSystem);
+
+g_tree = Prop()
+g_tree.load("data/trees/birch_01_d.obj", g_terrain, g_renderingSystem);
 
 currentTime = glfw.get_time()
 prevMouseX,prevMouseY = glfw.get_cursor_pos(window)

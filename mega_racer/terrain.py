@@ -196,7 +196,11 @@ class Terrain:
             #version 330
             in vec3 positionIn;
             in vec3 normalIn;
-
+            
+            //2.2
+            uniform mat4 worldToViewTransform;
+            
+            
             uniform mat4 modelToClipTransform;
             uniform mat4 modelToViewTransform;
             uniform mat3 modelToViewNormalTransform;
@@ -205,6 +209,9 @@ class Terrain:
             uniform float terrainTextureXyScale;
             uniform vec2 xyNormScale;
             uniform vec2 xyOffset;
+
+            
+
 
 
             // 'out' variables declared in a vertex shader can be accessed in the subsequent stages.
@@ -222,6 +229,10 @@ class Terrain:
                 
                 vec3 v2f_normalIn;
 
+                //2.2
+                float distance;
+                vec3 cameraPosInWorldSpace;
+                vec3 viewToVertexPosition;
 
             };
 
@@ -239,6 +250,13 @@ class Terrain:
                 v2f_normalIn = normalIn;
                 
                 //normalizedXYcoords = positionIn.xy * xyNormScale + xyOffset;
+                
+                
+                //2.2
+                distance = -v2f_viewSpacePosition.z;
+                //first use the worldToViewTransform to get the camera world space coords
+                cameraPosInWorldSpace = vec3(worldToViewTransform[3][0],worldToViewTransform[3][1],worldToViewTransform[3][2]);
+                viewToVertexPosition = normalize(positionIn - cameraPosInWorldSpace);
 
 	            // gl_Position is a buit-in 'out'-variable that gets passed on to the clipping and rasterization stages (hardware fixed function).
                 // it must be written by the vertex shader in order to produce any drawn geometry. 
@@ -257,6 +275,13 @@ class Terrain:
                 vec3 v2f_viewSpacePosition;
                 vec3 v2f_viewSpaceNormal;
                 vec3 v2f_worldSpacePosition;
+                
+                //2.2
+                float distance; //camera to geometry distance
+                vec3 cameraPosInWorldSpace;
+                vec3 viewToVertexPosition;
+
+
                 
                 //vec2 normalizedXYcoords;
                 
@@ -296,7 +321,7 @@ class Terrain:
                 
                 vec2 normalized_text_coord = vec2(v2f_worldSpacePosition.x * v2f_xyNormScale.x, v2f_worldSpacePosition.y * v2f_xyNormScale.y);
                 
-                normalized_text_coord = (normalized_text_coord -v2f_xyOffset * v2f_xyNormScale);
+                normalized_text_coord = (normalized_text_coord - v2f_xyOffset * v2f_xyNormScale);
                 
                 float blue_channel = texture(terrainDataSample, normalized_text_coord).z;
 
@@ -329,9 +354,9 @@ class Terrain:
                 
                 //materialDiffuse = texture(highTexture, vec2(v2f_worldSpacePosition.xy) * terrainTextureXyScale).xyz;
 
-
+                //2.2
                 vec3 reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
-	            fragmentColor = vec4(toSrgb(reflectedLight), 1.0);
+	            fragmentColor = vec4(toSrgb(applyFog(reflectedLight,distance, cameraPosInWorldSpace, viewToVertexPosition)), 1.0);
 	            //fragmentColor = vec4(toSrgb(vec3(v2f_height/terrainHeightScale)), 1.0);
 
             }
