@@ -23,11 +23,16 @@ from lab_utils import vec3, vec2
 from terrain import Terrain
 from racer import Racer
 
+import random
+
+
 from Prop import Prop
+from Prop import PropManager
 
 #
 # global variable declarations
 #
+
 g_startWidth  = 1280
 g_startHeight = 720
 g_backGroundColour = [0.1, 0.2, 0.1 ]
@@ -55,10 +60,18 @@ g_terrain = None
 g_racer = None
 g_tree = None
 
+g_Props = []
+
+
 
 g_headlight_position = [0.0,0.0,0.0];
 g_headlight_color = [0.0,0.0,0.0];
 g_headlight_direction = [0.0,0.0,0.0];
+
+g_tree_location = Terrain.treeLocations
+
+
+
 
 #
 # Key-frames for the sun light and ambient, picked by hand-waving to look ok. Note how most of this is nonsense from a physical point of view and 
@@ -368,7 +381,6 @@ def update(dt, keyStateMap, mouseDelta):
 
 
 
-
 # Called once per frame by the main loop below
 def renderFrame(width, height):
     glViewport(0, 0, width, height);
@@ -394,9 +406,11 @@ def renderFrame(width, height):
     g_racer.render(view, g_renderingSystem)
 
     # call tree
-    # g_tree.render(view, g_renderingSystem)
-    # g_tree.render(view, g_renderingSystem)
-    g_tree.render(view, g_renderingSystem)
+    # Call each part of the scene to render itself
+    g_racer.render(view, g_renderingSystem)
+    for p in g_Props:
+        p.render(view, g_renderingSystem)
+
 
 
 
@@ -577,8 +591,20 @@ g_terrain.load("data/track_01_128.png", g_renderingSystem);
 g_racer = Racer()
 g_racer.load("data/racer_02.obj", g_terrain, g_renderingSystem);
 
-g_tree = Prop()
-g_tree.load("data/trees/birch_01_d.obj", g_terrain, g_renderingSystem);
+# g_tree = Prop()
+# g_tree.load("data/trees/birch_01_d.obj", g_terrain, g_renderingSystem);
+
+
+
+
+treeSample = random.sample(g_terrain.treeLocations,25)
+rockSample = random.sample(g_terrain.rockLocations,25)
+
+propManager = PropManager(g_terrain)
+for t in treeSample:
+    g_Props.append(propManager.createTreeProp(g_terrain,g_renderingSystem, t))
+for r in rockSample:
+    g_Props.append(propManager.createRockProp(g_terrain,g_renderingSystem, r))
 
 
 
