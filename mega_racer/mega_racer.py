@@ -143,7 +143,7 @@ class RenderingSystem:
         float fogAmount = c * exp(-rayOri.y*b) * (1.0-exp( -distance*rayDir.y*b ))/rayDir.y;
         vec3  fogColor  = max(sunLightColour, globalAmbientLight*2.0);
         return mix( shading, fogColor, fogAmount );
-    }
+    } 
 
 
     vec3 computeShading(vec3 materialColour, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, vec3 lightColour)
@@ -345,8 +345,13 @@ def update(dt, keyStateMap, mouseDelta):
     g_racer.update(dt, keyStateMap)
 
 
+    g_headlight_position = g_racer.position
+    g_headlight_direction = g_racer.heading
+    # g_headlight_direction = [g_racer.heading.x,g_racer.headxxng.y,g_racer.heading.z - 0.33]
+    g_headlight_color = [0.9, 0.8, 0.7]
+
     # # seting the camera
-    viewHeight = g_followCamOffset / math.sqrt(2)
+    viewHeight = g_followCamOffset
     viewDistanceXYPlaneVec = viewHeight * normalize(g_racer.heading)
 
     g_viewPosition = [g_racer.position[0] - viewDistanceXYPlaneVec[0], g_racer.position[1] - viewDistanceXYPlaneVec[1], viewHeight + g_racer.position[2]]
@@ -355,9 +360,7 @@ def update(dt, keyStateMap, mouseDelta):
     # TODO 1.2: Make the camera look at the racer. Code for updating the camera should be done after the 
     # racer, otherwise the offset will lag and it generally looks weird.
 
-    # g_headlight_position = g_racer.position;
-    # g_headlight_direction = [g_racer.heading.x,g_racer.heading.y,g_racer.heading.z - 0.33];
-    # g_headlight_color = [1,0,0];
+
 
     if imgui.tree_node("Camera", imgui.TREE_NODE_DEFAULT_OPEN):
         _,g_followCamOffset = imgui.slider_float("FollowCamOffset ", g_followCamOffset, 2.0, 100.0)

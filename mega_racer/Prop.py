@@ -46,9 +46,6 @@ class Prop:
         #info = self.terrain.getInfoAt(position)
         # need to set position height to terrain height
         self.position = position
-    def update(self):
-        info = self.terrain.getInfoAt(self.position)
-        self.position[2] = lu.mix(self.position[2], info.height + self.zOffset, 0.1);
 class PropManager:
     trees = []
     rocks = []

@@ -34,6 +34,7 @@ class Terrain:
     roadTexId = None
     steepTexId = None
     terrainDataSampleTexId = None
+    waterTexId = None
 
         
 
@@ -53,6 +54,7 @@ class Terrain:
     TU_road = 2
     TU_steep = 3
     TU_map = 4
+    TU_water = 5
 
     def render(self, view, renderingSystem):
         glUseProgram(self.shader)
@@ -70,6 +72,8 @@ class Terrain:
         lu.bindTexture(self.TU_high, self.highTexId)
         lu.bindTexture(self.TU_road, self.roadTexId)
         lu.bindTexture(self.TU_steep, self.steepTexId)
+        lu.bindTexture(self.TU_water, self.waterTexId)
+
 
         lu.bindTexture(self.TU_map, self.terrainDataSampleTexId)
 
@@ -78,6 +82,9 @@ class Terrain:
         lu.setUniform(self.shader, "highTexture", self.TU_high)
         lu.setUniform(self.shader, "roadTexture", self.TU_road)
         lu.setUniform(self.shader, "steepTexture", self.TU_steep)
+        lu.setUniform(self.shader, "waterTexture", self.TU_water)
+
+
         lu.setUniform(self.shader, "terrainDataSample", self.TU_map)
 
 
@@ -299,6 +306,7 @@ class Terrain:
             uniform sampler2D roadTexture;
             uniform sampler2D highTexture;
             uniform sampler2D steepTexture;
+            uniform sampler2D waterTexture;
             uniform sampler2D terrainDataSample;
 
             out vec4 fragmentColor;
@@ -324,8 +332,12 @@ class Terrain:
                 normalized_text_coord = (normalized_text_coord - v2f_xyOffset * v2f_xyNormScale);
                 
                 float blue_channel = texture(terrainDataSample, normalized_text_coord).z;
-
                 
+                float black_channel = texture(terrainDataSample, normalized_text_coord).x;
+
+
+                //green = imagePixel[1];
+
                 // sampler2D test;
                 vec2 testvecw = v2f_worldSpacePosition.xy;
                 vec3 grassColour = texture(grassTextId, testvecw*terrainTextureXyScale).xyz;
@@ -346,10 +358,13 @@ class Terrain:
                     vec3 rock2Colour = texture(highTexture, testvecw*terrainTextureXyScale).xyz;
                     materialColour = mix(materialColour,rock2Colour,(v2f_height/terrainHeightScale));
                     
+                } else if (black_channel > 0.1){
+                    materialColour = grassColour;
                 }
                 else {
-                    materialColour = grassColour ;
-
+                     
+                    vec3 rock2Colour = texture(waterTexture, testvecw*terrainTextureXyScale).xyz;
+                    materialColour = mix(materialColour,rock2Colour,(v2f_height/terrainHeightScale));
                 }
                 
                 //materialDiffuse = texture(highTexture, vec2(v2f_worldSpacePosition.xy) * terrainTextureXyScale).xyz;
@@ -374,6 +389,8 @@ class Terrain:
         self.highTexId = ObjModel.loadTexture("data/rock_2.png", "", True)
         self.roadTexId = ObjModel.loadTexture("data/paving_5.png", "", True)
         self.steepTexId = ObjModel.loadTexture("data/rock_5.png", "", True)
+        self.waterTexId = ObjModel.loadTexture("data/water1.png", "", True)
+
 
         self.terrainDataSampleTexId = ObjModel.loadTexture("data/track_01_128.png","", False)
 
