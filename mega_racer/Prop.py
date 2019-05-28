@@ -23,6 +23,7 @@ class PropType(IntEnum):
     ROCKTHREE = 7
     ROCKFOUR = 8
     ROCKFIVE = 9
+    BIRD = 10
 
 class Prop:
     position = vec3(0,0,0) # start at 0,0,0 to make x-axis world rot easier
@@ -53,7 +54,8 @@ class PropManager:
     #list of tuples to send proptype info
     typeToFileNameList = {"rock":[("data/rocks/rock_01.obj",PropType.ROCKONE)],
                           "tree":[("data/trees/birch_01_d.obj",PropType.BIRCHTREE),
-                                  ("data/trees/tree_01.obj",PropType.TREEONE)]}
+                                  ("data/trees/tree_01.obj",PropType.TREEONE),
+                                  ("data/birds/bird.obj",PropType.BIRD)]}
     def __init__(self, terrain):
         #loads each type of prop and stores in trees and rocks
         self.terrain = terrain

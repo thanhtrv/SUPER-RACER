@@ -408,9 +408,12 @@ def renderFrame(width, height):
     g_terrain.render(view, g_renderingSystem)
     g_racer.render(view, g_renderingSystem)
 
+
     # call tree
     # Call each part of the scene to render itself
     g_racer.render(view, g_renderingSystem)
+
+
     for p in g_Props:
         p.render(view, g_renderingSystem)
 
