@@ -36,6 +36,11 @@ class Terrain:
     terrainDataSampleTexId = None
     waterTexId = None
 
+    #specular textures
+    specGrassTexId = None
+    specHighTexId = None
+    specRoadTexId = None
+    specSteepTexId = None
         
 
     # Lists of locations generated from the map texture green channel (see the 'load' method)
@@ -56,6 +61,11 @@ class Terrain:
     TU_map = 4
     TU_water = 5
 
+    TU_spec_grass = 6
+    TU_spec_high = 7
+    TU_spec_steep = 8
+    TU_spec_road = 9
+
     def render(self, view, renderingSystem):
         glUseProgram(self.shader)
         renderingSystem.setCommonUniforms(self.shader, view, lu.Mat4())
@@ -66,6 +76,8 @@ class Terrain:
         lu.setUniform(self.shader, "xyNormScale", xyNormScale);
         xyOffset = -(vec2(self.imageWidth, self.imageHeight) + vec2(1.0)) * self.xyScale / 2.0;
         lu.setUniform(self.shader, "xyOffset", xyOffset);
+        lu.setUniform(self.shader,"lightPOVTransform", view.depthMVPTransform)
+
 
         #TODO 1.4: Bind the grass texture to the right texture unit, hint: lu.bindTexture
         lu.bindTexture(self.TU_Grass, self.terrainTexId)
@@ -73,6 +85,11 @@ class Terrain:
         lu.bindTexture(self.TU_road, self.roadTexId)
         lu.bindTexture(self.TU_steep, self.steepTexId)
         lu.bindTexture(self.TU_water, self.waterTexId)
+
+        lu.bindTexture(self.TU_spec_grass, self.specGrassTexId)
+        lu.bindTexture(self.TU_spec_high, self.specHighTexId)
+        lu.bindTexture(self.TU_spec_road, self.specRoadTexId)
+        lu.bindTexture(self.TU_spec_steep, self.specSteepTexId)
 
 
         lu.bindTexture(self.TU_map, self.terrainDataSampleTexId)
@@ -83,6 +100,12 @@ class Terrain:
         lu.setUniform(self.shader, "roadTexture", self.TU_road)
         lu.setUniform(self.shader, "steepTexture", self.TU_steep)
         lu.setUniform(self.shader, "waterTexture", self.TU_water)
+
+        #set uniform specs
+        lu.setUniform(self.shader, "specularGrassTexture", self.TU_spec_grass)
+        lu.setUniform(self.shader, "specularHighTexture", self.TU_spec_high)
+        lu.setUniform(self.shader, "specularRoadTexture", self.TU_spec_road)
+        lu.setUniform(self.shader, "specularSteepTexture", self.TU_spec_steep)
 
 
         lu.setUniform(self.shader, "terrainDataSample", self.TU_map)
@@ -211,6 +234,10 @@ class Terrain:
             uniform mat4 modelToClipTransform;
             uniform mat4 modelToViewTransform;
             uniform mat3 modelToViewNormalTransform;
+            
+            uniform mat4 lightPOVTransform;
+
+            
 
             uniform float terrainHeightScale;
             uniform float terrainTextureXyScale;
@@ -240,6 +267,9 @@ class Terrain:
                 float distance;
                 vec3 cameraPosInWorldSpace;
                 vec3 viewToVertexPosition;
+                
+                                vec4 fragPosLightSpace;
+
 
             };
 
@@ -270,6 +300,12 @@ class Terrain:
                 // We transform the position using one matrix multiply from model to clip space. Note the added 1 at the end of the position to make the 3D
                 // coordinate homogeneous.
 	            gl_Position = modelToClipTransform * vec4(positionIn, 1.0);
+	            
+	            fragPosLightSpace = lightPOVTransform * vec4(positionIn, 1.0);
+
+	            
+	            
+	            
             }
 """
 
@@ -296,6 +332,8 @@ class Terrain:
                 vec2 v2f_xyOffset;   
                 
                 vec3 v2f_normalIn;
+                vec4 fragPosLightSpace;
+
 
 
             };
@@ -308,6 +346,12 @@ class Terrain:
             uniform sampler2D steepTexture;
             uniform sampler2D waterTexture;
             uniform sampler2D terrainDataSample;
+            
+            
+            uniform sampler2D specularGrassTexture;
+            uniform sampler2D specularHighTexture;
+            uniform sampler2D specularRoadTexture;
+            uniform sampler2D specularSteepTexture;
 
             out vec4 fragmentColor;
 
@@ -315,9 +359,10 @@ class Terrain:
             {
                 //vec3 materialColour = vec3(v2f_height/terrainHeightScale);
                 // TODO 1.4: Compute the texture coordinates and sample the texture for the grass and use as material colour.
-                //vec3 materialDiffuse;
-                // vec3 materialSpecular;
-                
+                vec3 materialDiffuse;
+                vec3 materialSpecular;
+                                float matSpecExp;
+
                 vec3 materialColour;
                 // Tracking all the map to find "blue".
                 
@@ -337,6 +382,7 @@ class Terrain:
 
 
                 //green = imagePixel[1];
+                 vec3 reflectedLight;
 
                 // sampler2D test;
                 vec2 testvecw = v2f_worldSpacePosition.xy;
@@ -347,24 +393,46 @@ class Terrain:
                 
                     vec3 road2Colour = texture(roadTexture, testvecw*terrainTextureXyScale).xyz;
                     materialColour = mix(materialColour,road2Colour,(v2f_height/terrainHeightScale));
+                    reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
+
+
                     //materialColour = rock2Colour;
                 } else if (steepness < steepThreshold){
                 
                     vec3 steep2Colour = texture(steepTexture, testvecw*terrainTextureXyScale).xyz;
-                    materialColour = mix(materialColour,steep2Colour,(v2f_height/terrainHeightScale));
+                    materialDiffuse = mix(materialColour,steep2Colour,(v2f_height/terrainHeightScale));
+                    //reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
+                    materialSpecular = texture(specularSteepTexture, vec2(v2f_worldSpacePosition.x,v2f_worldSpacePosition.y) * terrainTextureXyScale).xyz;
+                    matSpecExp = 50.0;
+                    reflectedLight = computeShadingSpecular(materialDiffuse, materialSpecular, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour, matSpecExp,  fragPosLightSpace);
+                    
 
                 } else if ((v2f_height/terrainHeightScale) > 0.9){
                 
                     vec3 rock2Colour = texture(highTexture, testvecw*terrainTextureXyScale).xyz;
                     materialColour = mix(materialColour,rock2Colour,(v2f_height/terrainHeightScale));
+                    //reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
+
+                    materialSpecular = texture(specularHighTexture, vec2(v2f_worldSpacePosition.x,v2f_worldSpacePosition.y) * terrainTextureXyScale).xyz;
+                    matSpecExp = 50.0;
+                    reflectedLight = computeShadingSpecular(materialColour, materialSpecular, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour, matSpecExp,  fragPosLightSpace);
                     
-                } else if (black_channel > 0.1){
+                } else if (black_channel > 0.2){
+                
                     materialColour = grassColour;
+                    materialSpecular = texture(specularGrassTexture, vec2(v2f_worldSpacePosition.x,v2f_worldSpacePosition.y) * terrainTextureXyScale).xyz;
+                    reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
+
+                    matSpecExp = 150.0;
+                    reflectedLight = computeShadingSpecular(materialColour, materialSpecular, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour, matSpecExp,  fragPosLightSpace);
+
                 }
                 else {
                      
                     vec3 rock2Colour = texture(waterTexture, testvecw*terrainTextureXyScale).xyz;
                     materialColour = mix(materialColour,rock2Colour,(v2f_height/terrainHeightScale));
+                    reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
+
                 }
                 
                 //materialDiffuse = texture(highTexture, vec2(v2f_worldSpacePosition.xy) * terrainTextureXyScale).xyz;
@@ -372,7 +440,6 @@ class Terrain:
                 
 
                 //2.2
-                vec3 reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
 	            fragmentColor = vec4(toSrgb(applyFog(reflectedLight,distance, cameraPosInWorldSpace, viewToVertexPosition)), 1.0);
 	            //fragmentColor = vec4(toSrgb(vec3(v2f_height/terrainHeightScale)), 1.0);
 
@@ -390,6 +457,11 @@ class Terrain:
         self.roadTexId = ObjModel.loadTexture("data/paving_5.png", "", True)
         self.steepTexId = ObjModel.loadTexture("data/rock_5.png", "", True)
         self.waterTexId = ObjModel.loadTexture("data/water1.png", "", True)
+
+        self.specGrassTexId = ObjModel.loadTexture("data/grass_specular.png", "", True)
+        self.specHighTexId = ObjModel.loadTexture("data/high_specular.png", "", True)
+        self.specSteepTexId = ObjModel.loadTexture("data/steep_specular.png", "", True)
+        self.specRoadTexId = ObjModel.loadTexture("data/road_specular.png", "", True)
 
 
         self.terrainDataSampleTexId = ObjModel.loadTexture("data/track_01_128.png","", False)

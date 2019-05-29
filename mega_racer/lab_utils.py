@@ -239,6 +239,19 @@ def make_perspective(yFovDeg, aspect, n, f):
 def flatten(*lll):
 	return [u for ll in lll for l in ll for u in l]
 
+#used for shadow map projection matrix
+def orthographic_projection_matrix(l,r,b,t,n,f):
+    ax = (2.0)/(r - l)
+    dx = -((l + r)/(r - l))
+    by = (2.0)/(t - b)
+    dy = -((b + t)/(t - b))
+    cz = (2.0)/(n - f)
+    dz = -((n + f)/(n - f))
+    return Mat4([[ax,0,0,dx],
+                 [0,by,0,dy],
+                 [0,0,cz,dz],
+                 [0,0,0,1]])
+
 
 def uploadFloatData(bufferObject, floatData):
     flatData = flatten(floatData)

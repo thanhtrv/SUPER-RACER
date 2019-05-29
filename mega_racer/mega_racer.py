@@ -100,10 +100,14 @@ g_ambientKeyFrames = [
 # object makes it easier to pass around. It is also convenient future-proofing if we want to add more
 # views (e.g., for a shadow map).
 class ViewParams:
-	viewToClipTransform = lu.Mat4()
-	worldToViewTransform = lu.Mat4()
-	width = 0
-	height = 0
+    viewToClipTransform = lu.Mat4();
+    worldToViewTransform = lu.Mat4();
+    depthMVPTransform = lu.Mat4();
+    width = 0;
+    height = 0
+
+
+
 
 
 
@@ -128,10 +132,19 @@ class RenderingSystem:
     uniform vec3 viewSpaceLightPosition;
     uniform vec3 sunLightColour;
     uniform vec3 globalAmbientLight;
+    
+    uniform vec3 headlight_colour;
+    uniform vec3 headlight_position;
+    uniform vec3 headlight_direction;
+    
 
     vec3 toSrgb(vec3 color)
     {
       return pow(color, vec3(1.0 / 2.2));
+    }
+    
+    vec3 fresnelSchick(vec3 r0, float cosAngle){
+	return r0 + (vec3(1.0) - r0) * pow (1.0 - cosAngle , 5.0);
     }
     
     //2.2
@@ -146,8 +159,8 @@ class RenderingSystem:
     } 
 
 
-    vec3 computeShading(vec3 materialColour, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, vec3 lightColour)
-    {
+    vec3 computeShading(vec3 materialColour, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, 
+    vec3 lightColour) { 
     
     
         
@@ -158,15 +171,37 @@ class RenderingSystem:
         float incomingIntensity = max(0.0, dot(viewSpaceNormal, viewSpaceDirectionToLight));
         vec3 incomingLight = incomingIntensity * lightColour;
         
-        
+        /*
+        vec3 viewSpaceDirectionToLight_head = normalize(headlight_position - headlight_direction);
+        float incomingIntensity_head = max(0.0, dot(viewSpaceNormal, viewSpaceDirectionToLight_head));
+
+        vec3 headLight = incomingIntensity_head * headlight_colour;
+        */
         
         
         
         // fragmentColor = vec4(vec3(incomingIntensity), material_alpha);
         
-        return (incomingLight + globalAmbientLight) * materialColour;
+        return (incomingLight + globalAmbientLight ) * materialColour;
     }
     
+    
+    vec3 computeShadingSpecular(vec3 materialDiffuse, vec3 materialSpecular, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, vec3 lightColour, float matSpecExp, vec4 fragPosLightSpace)
+    {
+        // TODO 1.5: Here's where code to compute shading would be placed most conveniently
+        vec3 viewSpaceDirToEye = normalize(-viewSpacePosition);
+        viewSpaceNormal = normalize(viewSpaceNormal);
+        vec3 viewSpaceDirectionToLight = normalize(viewSpaceLightPos - viewSpacePosition);
+        float incomingIntensity = max(0.0, dot(viewSpaceNormal, viewSpaceDirectionToLight));
+        vec3 incomingLight = incomingIntensity * lightColour;
+        vec3 halfVector = normalize(viewSpaceDirectionToLight + viewSpaceDirToEye);
+        float specularNormalizationFactor = ((matSpecExp + 2.0)/ (2.0));
+	    float specularIntensity = specularNormalizationFactor * pow(max(0.0, dot(viewSpaceNormal, halfVector)), matSpecExp);
+	    vec3 fresnelSpecular = fresnelSchick(materialSpecular, max(0.0,dot(viewSpaceDirectionToLight, halfVector)));
+        //float shadow = ShadowCalculation(fragPosLightSpace);
+        return (incomingLight  + globalAmbientLight) * materialDiffuse
+            + incomingLight * specularIntensity * fresnelSpecular ;
+    }
     
     """
     objModelShader = None
@@ -194,6 +229,11 @@ class RenderingSystem:
         lu.setUniform(shader, "viewSpaceLightPosition", viewSpaceLightPosition);
         lu.setUniform(shader, "globalAmbientLight", g_globalAmbientLight);
         lu.setUniform(shader, "sunLightColour", g_sunLightColour);
+
+        lu.setUniform(shader,"headlight_colour",g_headlight_color);
+        lu.setUniform(shader,"headlight_direction",g_headlight_direction);
+        lu.setUniform(shader,"headlight_position",g_headlight_position);
+
 
     def drawObjModel(self, model, modelToWorldTransform, view):    
         # Bind the shader program such that we can set the uniforms (model.render sets it again)
@@ -264,9 +304,6 @@ class RenderingSystem:
 
                 out vec4 fragmentColor;
                 
-                vec3 g_headlight_position;
-                vec3 g_headlight_direction;
-                vec3 g_headlight_colour;
                 
 
                 void main() 
@@ -332,6 +369,10 @@ def update(dt, keyStateMap, mouseDelta):
     global g_viewPosition
     global g_followCamOffset
     global g_followCamLookOffset
+    global g_headlight_position
+    global g_headlight_color
+    global g_headlight_direction
+
 
     if g_updateSun:
         g_sunAngle += dt * 0.25
@@ -403,6 +444,11 @@ def renderFrame(width, height):
     view.worldToViewTransform = lu.make_lookAt(g_viewPosition, g_viewTarget, g_viewUp)
     view.width = width
     view.height = height
+
+    # from Tutorial 16
+
+    lightPOV = lu.make_lookAt(g_sunPosition,g_viewTarget,g_viewUp)
+    view.depthMVPTransform = lu.orthographic_projection_matrix(0,1024,0,1024,g_nearDistance,g_farDistance) * lightPOV
 
     # Call each part of the scene to render itself
     g_terrain.render(view, g_renderingSystem)
