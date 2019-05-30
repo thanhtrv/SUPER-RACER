@@ -404,7 +404,7 @@ class Terrain:
                     //reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
                     materialSpecular = texture(specularSteepTexture, vec2(v2f_worldSpacePosition.x,v2f_worldSpacePosition.y) * terrainTextureXyScale).xyz;
                     matSpecExp = 50.0;
-                    reflectedLight = computeShadingSpecular(materialDiffuse, materialSpecular, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour, matSpecExp,  fragPosLightSpace);
+                    reflectedLight = computeShadingSpecular(materialDiffuse, materialSpecular, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour, matSpecExp);
                     
 
                 } else if ((v2f_height/terrainHeightScale) > 0.9){
@@ -415,7 +415,7 @@ class Terrain:
 
                     materialSpecular = texture(specularHighTexture, vec2(v2f_worldSpacePosition.x,v2f_worldSpacePosition.y) * terrainTextureXyScale).xyz;
                     matSpecExp = 50.0;
-                    reflectedLight = computeShadingSpecular(materialColour, materialSpecular, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour, matSpecExp,  fragPosLightSpace);
+                    reflectedLight = computeShadingSpecular(materialColour, materialSpecular, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour, matSpecExp);
                     
                 } else if (black_channel > 0.2){
                 
@@ -424,7 +424,7 @@ class Terrain:
                     reflectedLight = computeShading(materialColour, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour);
 
                     matSpecExp = 150.0;
-                    reflectedLight = computeShadingSpecular(materialColour, materialSpecular, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour, matSpecExp,  fragPosLightSpace);
+                    reflectedLight = computeShadingSpecular(materialColour, materialSpecular, v2f_viewSpacePosition, v2f_viewSpaceNormal, viewSpaceLightPosition, sunLightColour, matSpecExp);
 
                 }
                 else {

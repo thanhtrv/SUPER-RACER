@@ -186,19 +186,27 @@ class RenderingSystem:
     }
     
     
-    vec3 computeShadingSpecular(vec3 materialDiffuse, vec3 materialSpecular, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, vec3 lightColour, float matSpecExp, vec4 fragPosLightSpace)
+    vec3 computeShadingSpecular(vec3 materialDiffuse, vec3 materialSpecular, vec3 viewSpacePosition, vec3 viewSpaceNormal, vec3 viewSpaceLightPos, vec3 lightColour, float matSpecExp)
     {
         // TODO 1.5: Here's where code to compute shading would be placed most conveniently
         vec3 viewSpaceDirToEye = normalize(-viewSpacePosition);
+        
         viewSpaceNormal = normalize(viewSpaceNormal);
         vec3 viewSpaceDirectionToLight = normalize(viewSpaceLightPos - viewSpacePosition);
         float incomingIntensity = max(0.0, dot(viewSpaceNormal, viewSpaceDirectionToLight));
+        
         vec3 incomingLight = incomingIntensity * lightColour;
+        
         vec3 halfVector = normalize(viewSpaceDirectionToLight + viewSpaceDirToEye);
+        
         float specularNormalizationFactor = ((matSpecExp + 2.0)/ (2.0));
+        
 	    float specularIntensity = specularNormalizationFactor * pow(max(0.0, dot(viewSpaceNormal, halfVector)), matSpecExp);
+	    
 	    vec3 fresnelSpecular = fresnelSchick(materialSpecular, max(0.0,dot(viewSpaceDirectionToLight, halfVector)));
+	    
         //float shadow = ShadowCalculation(fragPosLightSpace);
+        
         return (incomingLight  + globalAmbientLight) * materialDiffuse
             + incomingLight * specularIntensity * fresnelSpecular ;
     }
