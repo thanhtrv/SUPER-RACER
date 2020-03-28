@@ -1,4 +1,4 @@
 # cosc3000
-Graphic Project for COSC3000 at UQ.
+Graphic Project for a graphic course at UQ.
 ## details
 Using python and c++ also OpenGL.
